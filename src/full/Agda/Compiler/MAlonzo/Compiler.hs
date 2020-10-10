@@ -266,6 +266,7 @@ definition env isMain def@Defn{defName = q, defType = ty, theDef = d} = do
   mmaybe <- getBuiltinName builtinMaybe
   minf   <- getBuiltinName builtinInf
   mflat  <- getBuiltinName builtinFlat
+  mvec   <- getBuiltinName builtinVec
   let retDecls ds = return (mempty, ds)
   main <- checkTypeOfMain isMain q def
   second ((main ++) . infodecl q) <$>
@@ -312,6 +313,22 @@ definition env isMain def@Defn{defName = q, defType = ty, theDef = d} = do
         retDecls $ [ HS.TypeDecl t (vars HS.UnkindedVar (np - 1)) (HS.FakeType "[]")
                    , HS.FunBind [HS.Match d (vars HS.PVar np) (HS.UnGuardedRhs HS.unit_con) emptyBinds] ] ++
                    cs
+
+      -- Compiling Vec
+      Datatype{ dataPars = np } | Just q == mvec -> do
+        _ <- sequence_ [primVNil, primVCons] -- Just to get the proper error for missing vector NIL/CONS
+        caseMaybe pragma (return ()) $ \ p -> setCurrentRange p $ warning . GenericWarning =<< do
+          fsep $ pwords "Ignoring GHC pragma for builtin vectors; they always compile to Haskell vectors."
+        let d = unqhname "d" q
+            t = unqhname "T" q
+        Just vnil  <- getBuiltinName builtinVNil
+        Just vcons <- getBuiltinName builtinVCons
+        let vars f n = map (f . ihname "a") [0 .. n - 1]
+        cs <- mapM compiledcondecl [vnil, vcons]
+        retDecls $ [ HS.TypeDecl t (vars HS.UnkindedVar (np - 1)) (HS.FakeType "[]")
+                   , HS.FunBind [HS.Match d (vars HS.PVar np) (HS.UnGuardedRhs HS.unit_con) emptyBinds] ] ++
+                   cs
+
 
       -- Compiling Maybe
       Datatype{ dataPars = np } | Just q == mmaybe -> do
@@ -663,8 +680,10 @@ alt sc a = do
     T.TACon {T.aCon = c} -> do
       intros (T.aArity a) $ \ xs -> do
         erased <- liftCC $ getErasedConArgs c
-        nil  <- liftCC $ getBuiltinName builtinNil
-        cons <- liftCC $ getBuiltinName builtinCons
+        nil   <- liftCC $ getBuiltinName builtinNil
+        cons  <- liftCC $ getBuiltinName builtinCons
+        vnil  <- liftCC $ getBuiltinName builtinVNil
+        vcons <- liftCC $ getBuiltinName builtinVCons
         hConNm <-
           if | Just c == nil  -> return $ HS.UnQual $ HS.Ident "[]"
              | Just c == cons -> return $ HS.UnQual $ HS.Symbol ":"

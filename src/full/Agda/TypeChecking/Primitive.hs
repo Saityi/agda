@@ -16,6 +16,7 @@ import qualified Data.Set as Set
 import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Vector as V
 import Data.Word
 
 import qualified Agda.Interaction.Options.Lenses as Lens
@@ -141,6 +142,10 @@ instance PrimTerm Fixity' where primTerm _ = primFixity
 instance PrimTerm a => PrimType [a]
 instance PrimTerm a => PrimTerm [a] where
   primTerm _ = list (primTerm (undefined :: a))
+
+instance PrimTerm a => PrimType (V.Vector a)
+instance PrimTerm a => PrimTerm (V.Vector a) where
+  primTerm _ = vec (primTerm (undefined :: a))
 
 instance PrimTerm a => PrimType (Maybe a)
 instance PrimTerm a => PrimTerm (Maybe a) where
@@ -269,6 +274,20 @@ instance ToTerm a => ToTerm [a] where
     fromA  <- toTerm
     return $ mkList . map fromA
 
+buildVec :: TCM (V.Vector Term -> Term)
+buildVec = do
+    vnil'  <- primVNil
+    vcons' <- primVCons
+    let vnil       = vnil'
+        vcons x xs = vcons' `applys` [x, xs]
+    return $ V.foldr vcons vnil
+instance ToTerm a => ToTerm (V.Vector a) where
+  toTerm = do
+    mkVec <- buildVec
+    fromA  <- toTerm
+    return $ mkVec . V.map fromA
+
+
 instance ToTerm a => ToTerm (Maybe a) where
   toTerm = do
     nothing <- primNothing
@@ -388,6 +407,33 @@ instance (ToTerm a, FromTerm a) => FromTerm [a] where
               redReturn (y : ys)
           _ -> return $ NoReduction (reduced b)
 
+instance (ToTerm a, FromTerm a) => FromTerm (V.Vector a) where
+  fromTerm = do
+    vnil   <- isCon <$> primVNil
+    vcons  <- isCon <$> primVCons
+    toA   <- fromTerm
+    mkVec vnil vcons toA <$> toTerm
+    where
+      isCon (Lam _ b)   = isCon $ absBody b
+      isCon (Con c _ _) = c
+      isCon v           = __IMPOSSIBLE__
+
+      mkVec vnil vcons toA fromA t = do
+        b <- reduceB' t
+        let t = ignoreBlocking b
+        let arg = (<$ t)
+        case unArg t of
+          Con c ci []
+            | c == vnil  -> return $ YesReduction NoSimplification V.empty
+          Con c ci es
+            | c == vcons, Just [x,xs] <- allApplyElims es ->
+              redBind (toA x)
+                  (\x' -> notReduced $ arg $ Con c ci (map Apply [ignoreReduced x',xs])) $ \y ->
+              redBind
+                  (mkVec vnil vcons toA fromA xs)
+                  (fmap $ \xs' -> arg $ Con c ci (map Apply [defaultArg $ fromA y, xs'])) $ \ys ->
+              redReturn (V.cons y ys)
+          _ -> return $ NoReduction (reduced b)
 instance FromTerm a => FromTerm (Maybe a) where
   fromTerm = do
     nothing <- isCon <$> primNothing
@@ -810,7 +856,7 @@ primitiveFunctions = localTCStateSavingWarnings <$> Map.fromList
   -- show function around for convenience, and as a test case for a primitive
   -- function taking an integer.
   -- -- Integer functions
-  -- [ "primIntegerPlus"     |-> mkPrimFun2 ((+)        :: Op Integer)
+  -- [ "primIntegerPlus"     |-> /mkPrimFun2 ((+)        :: Op Integer)
   -- , "primIntegerMinus"    |-> mkPrimFun2 ((-)        :: Op Integer)
   -- , "primIntegerTimes"    |-> mkPrimFun2 ((*)        :: Op Integer)
   -- , "primIntegerDiv"      |-> mkPrimFun2 (div        :: Op Integer)    -- partial
@@ -926,6 +972,16 @@ primitiveFunctions = localTCStateSavingWarnings <$> Map.fromList
   , "primStringEquality"          |-> mkPrimFun2 ((==) :: Rel Text)
   , "primShowString"              |-> mkPrimFun1 (T.pack . prettyShow . LitString)
   , "primStringUncons"            |-> mkPrimFun1 T.uncons
+
+  -- Vector functions
+  , "primVectorTail"      |-> mkPrimFun1 (V.tail :: Fun (V.Vector MetaId))
+--  , "primVectorIndex"     |-> mkPrimFun2 (V.!)
+--  , "primVectorSafeIndex" |-> mkPrimFun2 (V.!?)
+--  , "primVectorHead"      |-> mkPrimFun1 V.unsafeHead
+--  , "primVectorReverse"   |-> mkPrimFun1 V.reverse
+--  , "primVectorSnoc"      |-> mkPrimFun2 V.snoc
+--  , "primVectorFoldr"     |-> mkPrimFun4 V.foldr
+
 
   -- Other stuff
   , "primEraseEquality"   |-> primEraseEquality

@@ -7,10 +7,10 @@ builtinNat, builtinSuc, builtinZero, builtinNatPlus, builtinNatMinus,
   builtinNatTimes, builtinNatDivSucAux, builtinNatModSucAux, builtinNatEquals,
   builtinNatLess, builtinInteger, builtinIntegerPos, builtinIntegerNegSuc,
   builtinWord64,
-  builtinFloat, builtinChar, builtinString, builtinUnit, builtinUnitUnit,
+  builtinFloat, builtinChar, builtinString, builtinUnit, builtinUnitUnit, builtinVec,
   builtinSigma,
   builtinBool, builtinTrue, builtinFalse,
-  builtinList, builtinNil, builtinCons, builtinIO,
+  builtinList, builtinNil, builtinCons, builtinVNil, builtinVCons, builtinIO,
   builtinMaybe, builtinNothing, builtinJust,
   builtinPath, builtinPathP, builtinInterval, builtinIZero, builtinIOne, builtinPartial, builtinPartialP,
   builtinIMin, builtinIMax, builtinINeg,
@@ -87,6 +87,7 @@ builtinIntegerNegSuc                     = "INTEGERNEGSUC"
 builtinFloat                             = "FLOAT"
 builtinChar                              = "CHAR"
 builtinString                            = "STRING"
+builtinVec                               = "VECTOR"
 builtinUnit                              = "UNIT"
 builtinUnitUnit                          = "UNITUNIT"
 builtinSigma                             = "SIGMA"
@@ -96,6 +97,8 @@ builtinFalse                             = "FALSE"
 builtinList                              = "LIST"
 builtinNil                               = "NIL"
 builtinCons                              = "CONS"
+builtinVNil                               = "VNIL"
+builtinVCons                              = "VCONS"
 builtinMaybe                             = "MAYBE"
 builtinNothing                           = "NOTHING"
 builtinJust                              = "JUST"

@@ -110,7 +110,7 @@ treelessPrimName p =
 -- | Haskell modules to be imported for BUILT-INs
 importsForPrim :: TCM [HS.ModuleName]
 importsForPrim =
-  fmap (++ [HS.ModuleName "Data.Text"]) $
+  fmap (++ [HS.ModuleName "Data.Text", HS.ModuleName "Data.Vector"]) $
   xForPrim $
   List.map (\(s, ms) -> (s, return (List.map HS.ModuleName ms))) $
   [ "CHAR"                       |-> ["Data.Char"]
@@ -264,6 +264,17 @@ primBody s = maybe unimplemented (fromRight (hsVarUQ . HS.Ident) <$>) $
   , "primShowString"     |-> return "(Data.Text.pack . show :: Data.Text.Text -> Data.Text.Text)"
   , "primStringToListInjective" |-> return "erased"
   , "primStringFromListInjective" |-> return "erased"
+
+  -- Vectors
+  , "primVectorCons"      |-> return "Data.Vector.cons"
+  , "primVectorEmpty"     |-> return "Data.Vector.empty"
+  , "primVectorTail"      |-> return "Data.Vector.tail"
+  , "primVectorIndex"     |-> return "Data.Vector.!"
+  , "primVectorSafeIndex" |-> return "Data.Vector.!?"
+  , "primVectorHead"      |-> return "Data.Vector.unsafeHead"
+  , "primVectorReverse"   |-> return "Data.Vector.reverse"
+  , "primVectorSnoc"      |-> return "Data.Vector.snoc"
+  , "primVectorFoldr"     |-> return "Data.Vector.foldr"
 
   -- Reflection
   , "primQNameEquality"   |-> rel "(==)" "MAlonzo.RTE.QName"

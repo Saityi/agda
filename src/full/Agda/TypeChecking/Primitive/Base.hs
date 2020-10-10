@@ -118,6 +118,9 @@ t <@@> (x,y,r) = do
 list :: TCM Term -> TCM Term
 list t = primList <@> t
 
+vec :: TCM Term -> TCM Term
+vec t = primVec <@> t
+
 tMaybe :: TCM Term -> TCM Term
 tMaybe t = primMaybe <@> t
 

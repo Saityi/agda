@@ -71,6 +71,7 @@ findBuiltinInfo b = find ((b ==) . builtinName) coreBuiltins
 coreBuiltins :: [BuiltinInfo]
 coreBuiltins =
   [ (builtinList                             |-> BuiltinData (tset --> tset) [builtinNil, builtinCons])
+  , (builtinVec                              |-> BuiltinData (tset --> tset) [builtinVNil, builtinVCons])
   , (builtinArg                              |-> BuiltinData (tset --> tset) [builtinArgArg])
   , (builtinAbs                              |-> BuiltinData (tset --> tset) [builtinAbsAbs])
   , (builtinArgInfo                          |-> BuiltinData tset [builtinArgArgInfo])
@@ -105,6 +106,7 @@ coreBuiltins =
   , (builtinFloat                            |-> builtinPostulate tset)
   , (builtinChar                             |-> builtinPostulate tset)
   , (builtinString                           |-> builtinPostulate tset)
+  , (builtinVec                              |-> builtinPostulate tset)
   , (builtinQName                            |-> builtinPostulate tset)
   , (builtinAgdaMeta                         |-> builtinPostulate tset)
   , (builtinIO                               |-> builtinPostulate (tset --> tset))
@@ -264,6 +266,8 @@ coreBuiltins =
   , (builtinRewrite                          |-> BuiltinUnknown Nothing verifyBuiltinRewrite)
   , (builtinNil                              |-> BuiltinDataCons (hPi "A" tset (el (list v0))))
   , (builtinCons                             |-> BuiltinDataCons (hPi "A" tset (tv0 --> el (list v0) --> el (list v0))))
+  , (builtinVNil                             |-> BuiltinDataCons (hPi "A" tset (el (vec v0 tnat))))
+  , (builtinVCons                            |-> BuiltinDataCons (hPi "A" tset (tv0 --> el (vec v0 tnat) --> el (vec v0 tnat))))
   , (builtinNothing                          |-> BuiltinDataCons (hPi "A" tset (el (tMaybe v0))))
   , (builtinJust                             |-> BuiltinDataCons (hPi "A" tset (tv0 --> el (tMaybe v0))))
   , (builtinZero                             |-> BuiltinDataCons tnat)
@@ -396,6 +400,7 @@ coreBuiltins =
         tsetOmega  = return $ sort $ Inf IsFibrant 0
         tlevel     = el primLevel
         tlist x    = el $ list (fmap unEl x)
+        tvec x     = el $ vec (fmap unEl x)
         tmaybe x   = el $ tMaybe (fmap unEl x)
         tpair lx ly x y = el $ primSigma
                             <#> lx
@@ -747,6 +752,7 @@ bindBuiltinInfo (BuiltinInfo s d) e = do
            | s == builtinUnit     -> bindBuiltinUnit     v
            | s == builtinSigma    -> bindBuiltinSigma    v
            | s == builtinList     -> bindBuiltinData s   v
+           | s == builtinVec      -> bindBuiltinData s   v
            | s == builtinMaybe    -> bindBuiltinData s   v
            | otherwise            -> bindBuiltinName s   v
 
@@ -812,6 +818,7 @@ bindBuiltinInfo (BuiltinInfo s d) e = do
                 when (s == builtinChar)   $ addHaskellPragma q "= type Char"
                 when (s == builtinString) $ addHaskellPragma q "= type Data.Text.Text"
                 when (s == builtinFloat)  $ addHaskellPragma q "= type Double"
+                when (s == builtinVec)    $ addHaskellPragma q "= type Data.Vector.Vector"
                 when (s == builtinWord64) $ addHaskellPragma q "= type MAlonzo.RTE.Word64"
                 when (s == builtinPathP)  $ builtinPathPHook q
                 bindBuiltinName s v
@@ -858,6 +865,8 @@ bindBuiltin b x = do
      | b == builtinSuc   -> now builtinNat b
      | b == builtinNil   -> now builtinList b
      | b == builtinCons  -> now builtinList b
+     | b == builtinVNil  -> now builtinVec b
+     | b == builtinVCons -> now builtinVec b
      | b == builtinInf   -> bindBuiltinInf x
      | b == builtinSharp -> bindBuiltinSharp x
      | b == builtinFlat  -> bindBuiltinFlat x

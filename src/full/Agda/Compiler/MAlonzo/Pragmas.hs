@@ -156,6 +156,8 @@ getHaskellConstructor c = do
   false   <- getBuiltinName builtinFalse
   nil     <- getBuiltinName builtinNil
   cons    <- getBuiltinName builtinCons
+  vnil    <- getBuiltinName builtinVNil
+  vcons   <- getBuiltinName builtinVCons
   nothing <- getBuiltinName builtinNothing
   just    <- getBuiltinName builtinJust
   sharp   <- getBuiltinName builtinSharp
